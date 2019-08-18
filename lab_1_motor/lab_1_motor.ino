@@ -3,8 +3,5 @@ void setup() {
 }
 
 void loop() {
-  for (int i = 0; i < 256; i++) {
-    analogWrite(3, i);
-    delay(50);
-  }
+  digitalWrite(3, HIGH);
 }
