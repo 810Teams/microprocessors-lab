@@ -8,23 +8,24 @@
 // A1 - 
 // A2 - 
 // A3 - 
-// A4 - Temperature I2C Essential
-// A5 - Temperature I2C Essential
-// 13 - PIR Sensor
-// 12 - LCD Display Essential
-// 11 - LCD Display Essential
+// A4 - Temperature I2C Essential | LCD I2C Essential
+// A5 - Temperature I2C Essential | LCD I2C Essential
+// 13 - 
+// 12 - 
+// 11 - 
 // 10 - 
-// 9  - LED Greens
-// 8  - 
+// 9  - LED
+// 8  - PIR Sensor
 // 7  - Ultrasonic OUT
 // 6  - Ultrasonic IN
-// 5  - LCD Display Essential
-// 4  - LCD Display Essential
-// 3  - LCD Display Essential
-// 2  - LCD Display Essential
+// 5  -
+// 4  - 
+// 3  - 
+// 2  -
 // 1  - 
+// 0  -
 
-#include <LiquidCrystal.h>
+#include <LiquidCrystal_I2C.h>
 #include <Wire.h>
 #include <SPI.h>
 #include <Ethernet.h>
@@ -38,7 +39,7 @@
 #define printByte(args) print(args, BYTE);
 #endif
 
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+LiquidCrystal_I2C lcd(0x3F, 16, 2);
 int REFRESH_RATE = 500;
 int IS_ON = 1;
 
@@ -49,7 +50,6 @@ EthernetClient ethClient;
 PubSubClient client(ethClient);
 
 void setup() {
-  lcd.begin(16, 2);
   Serial.begin(9600);
   
   setupPIR();
@@ -60,7 +60,19 @@ void setup() {
   
   findAddress();
 
-  pinMode(8, OUTPUT);
+  pinMode(9, OUTPUT);
+
+  // LCD Setup
+  Wire.beginTransmission(0x3F);
+  lcd.begin();
+  lcd.clear();
+  for (int i = 0; i < 5; i++) {
+    lcd.backlight();
+    delay(200);
+    lcd.noBacklight();
+    delay(200);
+  }
+  lcd.backlight();
 }
 
 void loop() {
@@ -78,7 +90,7 @@ void loop() {
 
 // PIR SENSOR
 void setupPIR() {
-  pinMode(13, INPUT);
+  pinMode(8, INPUT);
 }
 
 void loopPIR() {
@@ -86,8 +98,9 @@ void loopPIR() {
   lcd.setCursor(0, 0);
   lcd.print("PIR"); 
   lcd.setCursor(4, 0);
-  
-  if (digitalRead(13)) {
+
+  Wire.beginTransmission(0x3F);
+  if (digitalRead(8)) {
     Serial.println("YES");
     lcd.print("YES");
     client.publish("810teams", "pir:YES");
@@ -108,6 +121,7 @@ void loopTemperature() {
   float temp = ((float)750/7) * (output - 1) + 50 + 2.5; // +2.5 is calibration
   Serial.print("Temperature\t"); Serial.println(temp); 
 
+  Wire.beginTransmission(0x3F);
   lcd.setCursor(8, 0);
   lcd.print("TMP"); 
   lcd.setCursor(12, 0);
@@ -132,7 +146,8 @@ void loopUltrasonic() {
   
   int pulseWidth = pulseIn(6, HIGH);
   Serial.print("Pulse Width\t"); Serial.println(pulseWidth);
-  
+
+  Wire.beginTransmission(0x3F);
   lcd.setCursor(0, 1);
   lcd.print("PW"); 
   lcd.setCursor(3, 1);
@@ -145,7 +160,8 @@ void loopUltrasonic() {
   
   long distance = pulseWidth/29/2;
   Serial.print("Distance\t"); Serial.println(distance);
-  
+
+  Wire.beginTransmission(0x3F);
   lcd.setCursor(8, 1);
   lcd.print("Dst"); 
   lcd.setCursor(12, 1);
