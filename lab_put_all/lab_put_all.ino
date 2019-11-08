@@ -14,7 +14,7 @@
 // 12 - LCD Display Essential
 // 11 - LCD Display Essential
 // 10 - 
-// 9  - 
+// 9  - LED Greens
 // 8  - 
 // 7  - Ultrasonic OUT
 // 6  - Ultrasonic IN
@@ -30,6 +30,7 @@
 #include <Ethernet.h>
 #include <PubSubClient.h>
 #include <stdlib.h>
+#include <string.h>
 
 #if defined(ARDUINO) && ARDUINO >= 100
 #define printByte(args) write(args);
@@ -38,11 +39,11 @@
 #endif
 
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
-int REFRESH_RATE = 1000;
+int REFRESH_RATE = 500;
+int IS_ON = 1;
 
-byte mac[]    = {  0xDE, 0xED, 0xBA, 0xFE, 0xFE, 0xEE };
-char server[] = "10.30.4.180";
-//char server[] = "10.30.4.199";
+byte mac[]    = {  0xDE, 0xED, 0xBA, 0xFE, 0xFE, 0xED };
+IPAddress server(10, 30, 4, 181);
 
 EthernetClient ethClient;
 PubSubClient client(ethClient);
@@ -58,6 +59,8 @@ void setup() {
   setupEthernet();
   
   findAddress();
+
+  pinMode(8, OUTPUT);
 }
 
 void loop() {
@@ -87,11 +90,11 @@ void loopPIR() {
   if (digitalRead(13)) {
     Serial.println("YES");
     lcd.print("YES");
-    client.publish("810teams/pir", "YES");
+    client.publish("810teams", "pir:YES");
   } else {
     Serial.println("NO");
     lcd.print("NO");
-    client.publish("810teams/pir", "NO");
+    client.publish("810teams", "pir:NO");
   }
 }
 
@@ -110,9 +113,10 @@ void loopTemperature() {
   lcd.setCursor(12, 0);
   lcd.print(temp);
 
-  char buff[10];
-  dtostrf(temp, 4, 2, buff);
-  client.publish("810teams/temperature", buff);
+  String buff_str = "temperature:" + String(temp);
+  char buff[100];
+  buff_str.toCharArray(buff, 100);
+  client.publish("810teams", buff);
 }
 
 // ULTRASONIC
@@ -134,9 +138,10 @@ void loopUltrasonic() {
   lcd.setCursor(3, 1);
   lcd.print(pulseWidth); 
 
-  char buff[10];
-  dtostrf(pulseWidth, 4, 0, buff);
-  client.publish("810teams/pulseWidth", buff);
+  String buff_str = "pulseWidth:" + String(pulseWidth);
+  char buff[100];
+  buff_str.toCharArray(buff, 100);
+  client.publish("810teams", buff);
   
   long distance = pulseWidth/29/2;
   Serial.print("Distance\t"); Serial.println(distance);
@@ -146,8 +151,9 @@ void loopUltrasonic() {
   lcd.setCursor(12, 1);
   lcd.print(distance);
 
-  dtostrf(distance, 4, 0, buff);
-  client.publish("810teams/distance", buff);
+  buff_str = "distance:" + String(distance);
+  buff_str.toCharArray(buff, 100);
+  client.publish("810teams", buff);
 }
 
 // TEMPERATURE I2C
@@ -181,9 +187,10 @@ void loopTemperatureI2C() {
   }
   Serial.print("Temperature I2C\t"); Serial.println(temp);
 
-  char buff[10];
-  dtostrf(temp, 4, 2, buff);
-  client.publish("810teams/temperatureI2C", buff);
+  String buff_str = "temperatureI2C:" + String(temp);
+  char buff[100];
+  buff_str.toCharArray(buff, 100);
+  client.publish("810teams", buff);
 }
 
 void findAddress () {
@@ -239,6 +246,25 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.print((char)payload[i]);
   }
   Serial.println();
+
+  if (strcmp(topic, "810teams/led/value") == 0) {
+    if (IS_ON) {
+      payload[length] = '\0';
+      String payload_str = String((char*)payload);
+      int val = payload_str.toInt();
+      analogWrite(9, val);
+    } else {
+      analogWrite(9, 0);
+    }
+  } else if (strcmp(topic, "810teams/led/switch") == 0) {
+     payload[length] = '\0';
+     
+     if (strcmp((char*)payload, "on") == 0) {
+        IS_ON = 1;
+     } else {
+        IS_ON = 0;
+     }
+  }
 }
 
 void reconnect() {
@@ -247,8 +273,9 @@ void reconnect() {
 
     if (client.connect("810teams")) {
       Serial.println("connected");
-      client.publish("810teams/default","Client 810teams connected.");
-//      client.subscribe("test");
+      client.publish("810teams","Client 810teams connected.");
+      client.subscribe("810teams/led/value");
+      client.subscribe("810teams/led/switch");
     } else {
       Serial.print("failed, rc="); Serial.print(client.state()); Serial.println(" try again in 5 seconds");
       delay(5000);
