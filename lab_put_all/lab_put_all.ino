@@ -10,10 +10,10 @@
 // A3 - 
 // A4 - Temperature I2C Essential
 // A5 - Temperature I2C Essential
-// 13 -
+// 13 - PIR Sensor
 // 12 - LCD Display Essential
 // 11 - LCD Display Essential
-// 10 - PIR Sensor
+// 10 - 
 // 9  - 
 // 8  - 
 // 7  - Ultrasonic OUT
@@ -38,10 +38,11 @@
 #endif
 
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
-int REFRESH_RATE = 10000;
+int REFRESH_RATE = 1000;
 
-byte mac[]    = {  0xDE, 0xED, 0xBA, 0xFE, 0xFE, 0xED };
-char server[] = "broker.mqttdashboard.com";
+byte mac[]    = {  0xDE, 0xED, 0xBA, 0xFE, 0xFE, 0xEE };
+char server[] = "10.30.4.180";
+//char server[] = "10.30.4.199";
 
 EthernetClient ethClient;
 PubSubClient client(ethClient);
@@ -74,16 +75,16 @@ void loop() {
 
 // PIR SENSOR
 void setupPIR() {
-  pinMode(8, INPUT);
+  pinMode(13, INPUT);
 }
 
 void loopPIR() {
-  Serial.print("PIR Sensor: ");
+  Serial.print("PIR Sensor\t");
   lcd.setCursor(0, 0);
   lcd.print("PIR"); 
   lcd.setCursor(4, 0);
   
-  if (digitalRead(8)) {
+  if (digitalRead(13)) {
     Serial.println("YES");
     lcd.print("YES");
     client.publish("810teams/pir", "YES");
@@ -102,7 +103,7 @@ void setupTemperature() {
 void loopTemperature() {
   float output = ((float) analogRead(A0)/1023)*5;
   float temp = ((float)750/7) * (output - 1) + 50 + 2.5; // +2.5 is calibration
-  Serial.print("Temperature: "); Serial.println(temp); 
+  Serial.print("Temperature\t"); Serial.println(temp); 
 
   lcd.setCursor(8, 0);
   lcd.print("TMP"); 
@@ -126,7 +127,7 @@ void loopUltrasonic() {
   digitalWrite(7, LOW);
   
   int pulseWidth = pulseIn(6, HIGH);
-  Serial.print("Pulse Width: "); Serial.println(pulseWidth);
+  Serial.print("Pulse Width\t"); Serial.println(pulseWidth);
   
   lcd.setCursor(0, 1);
   lcd.print("PW"); 
@@ -138,7 +139,7 @@ void loopUltrasonic() {
   client.publish("810teams/pulseWidth", buff);
   
   long distance = pulseWidth/29/2;
-  Serial.print("Distance: "); Serial.println(distance);
+  Serial.print("Distance\t"); Serial.println(distance);
   
   lcd.setCursor(8, 1);
   lcd.print("Dst"); 
@@ -178,7 +179,7 @@ void loopTemperatureI2C() {
   if (secondByte) {
     temp += 0.5 ;
   }
-  Serial.print("Temperature I2C: "); Serial.println(temp);
+  Serial.print("Temperature I2C\t"); Serial.println(temp);
 
   char buff[10];
   dtostrf(temp, 4, 2, buff);
